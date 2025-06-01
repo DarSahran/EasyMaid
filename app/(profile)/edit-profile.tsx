@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Camera, Save } from 'lucide-react-native';
 import { COLORS, FONTS, RADIUS } from '@/lib/constants';
@@ -21,7 +21,29 @@ export default function EditProfileScreen() {
     pincode: user?.pincode || '',
   });
 
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      Alert.alert('Error', 'Name is required');
+      return false;
+    }
+    if (!formData.phone.trim()) {
+      Alert.alert('Error', 'Phone number is required');
+      return false;
+    }
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return false;
+    }
+    if (formData.phone && !/^[6-9]\d{9}$/.test(formData.phone.replace('+91', ''))) {
+      Alert.alert('Error', 'Please enter a valid Indian mobile number');
+      return false;
+    }
+    return true;
+  };
+
   const handleSave = async () => {
+    if (!validateForm()) return;
+
     try {
       setLoading(true);
       await soundManager.playSuccess();
@@ -40,6 +62,18 @@ export default function EditProfileScreen() {
     }
   };
 
+  const handleImagePicker = () => {
+    Alert.alert(
+      'Change Profile Photo',
+      'Choose an option',
+      [
+        { text: 'Camera', onPress: () => console.log('Open camera') },
+        { text: 'Gallery', onPress: () => console.log('Open gallery') },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -47,19 +81,23 @@ export default function EditProfileScreen() {
           <ArrowLeft size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profile</Text>
-        <TouchableOpacity onPress={handleSave} disabled={loading}>
-          <Save size={24} color={COLORS.primary} />
+        <TouchableOpacity onPress={handleSave} disabled={loading} style={styles.saveButton}>
+          {loading ? (
+            <ActivityIndicator size="small" color={COLORS.primary} />
+          ) : (
+            <Save size={24} color={COLORS.primary} />
+          )}
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Card style={styles.avatarCard}>
           <View style={styles.avatarSection}>
             <Image
               source={{ uri: user?.avatarUrl || 'https://via.placeholder.com/100' }}
               style={styles.avatar}
             />
-            <TouchableOpacity style={styles.cameraButton}>
+            <TouchableOpacity style={styles.cameraButton} onPress={handleImagePicker}>
               <Camera size={20} color={COLORS.white} />
             </TouchableOpacity>
           </View>
@@ -68,10 +106,11 @@ export default function EditProfileScreen() {
 
         <Card style={styles.formCard}>
           <Input
-            label="Full Name"
+            label="Full Name *"
             value={formData.name}
             onChangeText={(text) => setFormData({ ...formData, name: text })}
             placeholder="Enter your full name"
+            editable={!loading}
           />
           
           <Input
@@ -80,14 +119,16 @@ export default function EditProfileScreen() {
             onChangeText={(text) => setFormData({ ...formData, email: text })}
             placeholder="Enter your email"
             keyboardType="email-address"
+            editable={!loading}
           />
           
           <Input
-            label="Phone"
+            label="Phone *"
             value={formData.phone}
             onChangeText={(text) => setFormData({ ...formData, phone: text })}
             placeholder="Enter your phone number"
             keyboardType="phone-pad"
+            editable={!loading}
           />
           
           <Input
@@ -96,6 +137,7 @@ export default function EditProfileScreen() {
             onChangeText={(text) => setFormData({ ...formData, address: text })}
             placeholder="Enter your address"
             multiline
+            editable={!loading}
           />
           
           <Input
@@ -103,6 +145,7 @@ export default function EditProfileScreen() {
             value={formData.city}
             onChangeText={(text) => setFormData({ ...formData, city: text })}
             placeholder="Enter your city"
+            editable={!loading}
           />
           
           <Input
@@ -111,6 +154,7 @@ export default function EditProfileScreen() {
             onChangeText={(text) => setFormData({ ...formData, pincode: text })}
             placeholder="Enter your pincode"
             keyboardType="numeric"
+            editable={!loading}
           />
         </Card>
       </ScrollView>
@@ -141,6 +185,9 @@ const styles = StyleSheet.create({
     ...FONTS.h3,
     color: COLORS.text,
     fontWeight: 'bold',
+  },
+  saveButton: {
+    padding: 4,
   },
   content: {
     flex: 1,

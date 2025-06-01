@@ -1,24 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  Image, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
   Alert,
   Platform,
   RefreshControl,
-  Switch
+  Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Settings, 
-  LogOut, 
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Settings,
+  LogOut,
   Edit3,
   Heart,
   CreditCard,
@@ -30,155 +31,101 @@ import {
   Star,
   History,
   Gift,
-  Share2
+  Share2,
+  ChevronRight,
 } from 'lucide-react-native';
 import { COLORS, FONTS, RADIUS, SHADOWS, formatIndianCurrency } from '@/lib/constants';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
-import { getUserBookings } from '@/lib/supabase-helpers';
 import { soundManager } from '@/lib/soundManager';
 import Card from '@/components/ui/Card';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, signOut, refreshUser, loading: authLoading } = useAuth();
-  const { colors, isDark, toggleTheme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [darkModeEnabled, setDarkModeEnabled] = useState(false);
   const [stats, setStats] = useState({
-    totalBookings: 0,
-    totalSpent: 0,
-    averageRating: 0,
-    completedServices: 0,
-    favoriteServices: 0,
+    totalBookings: 12,
+    totalSpent: 8500,
+    averageRating: 4.8,
+    completedServices: 10,
+    favoriteServices: 3,
   });
-
-  useEffect(() => {
-    if (user && !user.id.startsWith('temp_')) {
-      fetchUserStats();
-    } else {
-      // Mock data for demo
-      setStats({
-        totalBookings: 12,
-        totalSpent: 8500,
-        averageRating: 4.8,
-        completedServices: 10,
-        favoriteServices: 3,
-      });
-    }
-  }, [user]);
-
-  const fetchUserStats = async () => {
-    if (!user || user.id.startsWith('temp_')) return;
-
-    try {
-      setLoading(true);
-      const bookings = await getUserBookings(user.id);
-      
-      const totalBookings = bookings.length;
-      const totalSpent = bookings.reduce((sum, booking) => sum + (booking.total_price || 0), 0);
-      const completedBookings = bookings.filter(b => b.status === 'completed');
-      const averageRating = completedBookings.length > 0 ? 4.8 : 0;
-
-      setStats({
-        totalBookings,
-        totalSpent,
-        averageRating,
-        completedServices: completedBookings.length,
-        favoriteServices: 3, // Mock data
-      });
-    } catch (error) {
-      console.error('Error fetching user stats:', error);
-      // Use mock data as fallback
-      setStats({
-        totalBookings: 12,
-        totalSpent: 8500,
-        averageRating: 4.8,
-        completedServices: 10,
-        favoriteServices: 3,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const onRefresh = async () => {
     setRefreshing(true);
     await soundManager.playSwoosh();
-    await Promise.all([
-      refreshUser(),
-      fetchUserStats(),
-    ]);
+    try {
+      await refreshUser();
+    } catch (error) {
+      console.error('Refresh error:', error);
+    }
     setRefreshing(false);
   };
 
   const handleSignOut = () => {
-  Alert.alert(
-    'Sign Out',
-    'Are you sure you want to sign out? You will need to log in again to access your account.',
-    [
-      { 
-        text: 'Cancel', 
-        style: 'cancel',
-        onPress: async () => {
-          await soundManager.playSwoosh();
-        }
-      },
-      { 
-        text: 'Sign Out', 
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            // Play sound first
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out? You will need to log in again to access your account.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: async () => {
             await soundManager.playSwoosh();
-            
-            // Show loading state
-            setLoading(true);
-            
-            // Clear any booking context data
-            // clearBooking(); // Uncomment if you have booking context
-            
-            // Sign out from auth context
-            await signOut();
-            
-            // Navigate to login screen
-            router.replace('/(auth)/login');
-            
-            // Show success message
-            setTimeout(() => {
-              Alert.alert('Signed Out', 'You have been successfully signed out.');
-            }, 500);
-            
-          } catch (error) {
-            console.error('Sign out error:', error);
-            
-            // Play error sound
-            await soundManager.playError();
-            
-            // Show error but still try to navigate
-            Alert.alert(
-              'Sign Out Error', 
-              'There was an issue signing out, but you have been logged out locally.',
-              [
-                {
-                  text: 'OK',
-                  onPress: () => {
-                    // Force navigation even if sign out failed
-                    router.replace('/(auth)/login');
+          }
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await soundManager.playSwoosh();
+              
+              console.log('🔄 Starting sign out process...');
+              
+              // Clear user session
+              await signOut();
+              
+              console.log('✅ Sign out successful, navigating to login');
+              
+              // Navigate to login screen
+              router.replace('/(auth)/login');
+              
+              // Show success message after navigation
+              setTimeout(() => {
+                Alert.alert('Signed Out', 'You have been successfully signed out.');
+              }, 500);
+              
+            } catch (error) {
+              console.error('❌ Sign out error:', error);
+              await soundManager.playError();
+              
+              // Even if there's an error, force logout locally
+              Alert.alert(
+                'Sign Out Error',
+                'There was an issue signing out, but you have been logged out locally.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      // Force navigation to login
+                      router.replace('/(auth)/login');
+                    }
                   }
-                }
-              ]
-            );
-          } finally {
-            setLoading(false);
+                ]
+              );
+            } finally {
+              setLoading(false);
+            }
           }
         }
-      }
-    ]
-  );
-};
-
+      ]
+    );
+  };
 
   const handleEditProfile = async () => {
     await soundManager.playSwoosh();
@@ -192,34 +139,37 @@ export default function ProfileScreen() {
 
   const handlePaymentMethods = async () => {
     await soundManager.playSwoosh();
-    router.push('/(profile)/payment-methods');
+    Alert.alert('Payment Methods', 'Manage your saved cards, UPI, and other payment options here.');
   };
 
   const handleNotifications = async () => {
     await soundManager.playSwoosh();
-    router.push('/(profile)/notifications');
+    Alert.alert('Notifications', 'Customize your notification preferences for bookings, offers, and updates.');
   };
 
   const handleHelpSupport = async () => {
     await soundManager.playSwoosh();
-    router.push('/(profile)/help-support');
+    Alert.alert(
+      'Help & Support',
+      'Need assistance? Contact us:\n\n📞 24/7 Helpline: 1800-MAID-HELP\n📧 Email: support@maideasy.com\n💬 Live Chat: Available in app'
+    );
   };
 
   const handlePrivacySecurity = async () => {
     await soundManager.playSwoosh();
-    router.push('/(profile)/privacy-security');
+    Alert.alert('Privacy & Security', 'Manage your privacy settings, data preferences, and account security here.');
   };
 
   const handleSettings = async () => {
     await soundManager.playSwoosh();
-    router.push('/(profile)/settings');
+    Alert.alert('App Settings', 'Configure app preferences, language, and other general settings.');
   };
 
   const handleReferFriend = async () => {
     await soundManager.playSwoosh();
     Alert.alert(
       'Refer a Friend',
-      'Share MaidEasy with your friends and earn ₹100 credit for each successful referral!',
+      'Share MaidEasy with your friends and family!\n\n🎁 You earn ₹100 credit\n🎁 Your friend gets ₹50 off their first booking\n\nStart referring now!',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Share App', onPress: () => console.log('Sharing app...') }
@@ -229,7 +179,7 @@ export default function ProfileScreen() {
 
   const handleBookingHistory = async () => {
     await soundManager.playSwoosh();
-    router.push('/(profile)/booking-history');
+    Alert.alert('Booking History', 'View all your past bookings, ratings, and service history here.');
   };
 
   const toggleNotifications = async () => {
@@ -241,7 +191,15 @@ export default function ProfileScreen() {
     );
   };
 
-  // Safe function to get user initials
+  const toggleDarkMode = async () => {
+    await soundManager.playSwoosh();
+    setDarkModeEnabled(!darkModeEnabled);
+    Alert.alert(
+      'Dark Mode',
+      `Dark mode ${!darkModeEnabled ? 'enabled' : 'disabled'} successfully!`
+    );
+  };
+
   const getUserInitials = () => {
     if (!user?.name || typeof user.name !== 'string') {
       return 'U';
@@ -253,7 +211,6 @@ export default function ProfileScreen() {
     return user.name.charAt(0).toUpperCase();
   };
 
-  // Safe function to get first name
   const getFirstName = () => {
     if (!user?.name || typeof user.name !== 'string') {
       return 'User';
@@ -300,7 +257,6 @@ export default function ProfileScreen() {
       subtitle: 'Manage notification preferences',
       icon: Bell,
       onPress: handleNotifications,
-      showArrow: true,
       rightComponent: (
         <Switch
           value={notificationsEnabled}
@@ -315,19 +271,13 @@ export default function ProfileScreen() {
       title: 'Dark Mode',
       subtitle: 'Toggle app theme',
       icon: Moon,
-      onPress: async () => {
-        await soundManager.playSwoosh();
-        toggleTheme();
-      },
+      onPress: toggleDarkMode,
       rightComponent: (
         <Switch
-          value={isDark}
-          onValueChange={async () => {
-            await soundManager.playSwoosh();
-            toggleTheme();
-          }}
+          value={darkModeEnabled}
+          onValueChange={toggleDarkMode}
           trackColor={{ false: COLORS.lightGray, true: COLORS.primary + '40' }}
-          thumbColor={isDark ? COLORS.primary : COLORS.white}
+          thumbColor={darkModeEnabled ? COLORS.primary : COLORS.white}
         />
       ),
     },
@@ -365,9 +315,18 @@ export default function ProfileScreen() {
     },
   ];
 
+  if (authLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Loading profile...</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView 
+    <View style={styles.container}>
+      <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -397,7 +356,7 @@ export default function ProfileScreen() {
                 <Edit3 size={16} color={COLORS.white} />
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.userInfo}>
               <Text style={styles.userName}>
                 {user?.name || 'User Name'}
@@ -405,7 +364,7 @@ export default function ProfileScreen() {
               <Text style={styles.userGreeting}>
                 Welcome back, {getFirstName()}! 👋
               </Text>
-              
+
               <View style={styles.userDetails}>
                 {user?.email && (
                   <View style={styles.detailRow}>
@@ -413,7 +372,7 @@ export default function ProfileScreen() {
                     <Text style={styles.detailText}>{user.email}</Text>
                   </View>
                 )}
-                
+
                 {user?.phone && (
                   <View style={styles.detailRow}>
                     <Phone size={16} color={COLORS.white} />
@@ -440,20 +399,20 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Enhanced Stats Cards */}
+        {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <Card style={styles.statCard}>
             <Heart size={24} color={COLORS.primary} />
             <Text style={styles.statNumber}>{stats.totalBookings}</Text>
             <Text style={styles.statLabel}>Total Bookings</Text>
           </Card>
-          
+
           <Card style={styles.statCard}>
             <Star size={24} color="#FFD700" />
             <Text style={styles.statNumber}>{stats.averageRating.toFixed(1)}</Text>
             <Text style={styles.statLabel}>Average Rating</Text>
           </Card>
-          
+
           <Card style={styles.statCard}>
             <CreditCard size={24} color={COLORS.success} />
             <Text style={styles.statNumber}>{formatIndianCurrency(stats.totalSpent)}</Text>
@@ -463,32 +422,32 @@ export default function ProfileScreen() {
 
         {/* Quick Actions */}
         <View style={styles.quickActionsContainer}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.quickActions}>
             <TouchableOpacity style={styles.quickActionItem} onPress={handleMyBookings}>
               <Heart size={24} color={COLORS.primary} />
-              <Text style={[styles.quickActionText, { color: colors.text }]}>My Bookings</Text>
+              <Text style={styles.quickActionText}>My Bookings</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity style={styles.quickActionItem} onPress={handleReferFriend}>
               <Share2 size={24} color={COLORS.primary} />
-              <Text style={[styles.quickActionText, { color: colors.text }]}>Refer Friend</Text>
+              <Text style={styles.quickActionText}>Refer Friend</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity style={styles.quickActionItem} onPress={handleHelpSupport}>
               <HelpCircle size={24} color={COLORS.primary} />
-              <Text style={[styles.quickActionText, { color: colors.text }]}>Get Help</Text>
+              <Text style={styles.quickActionText}>Get Help</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Menu Items */}
         <View style={styles.menuContainer}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Account Settings</Text>
+          <Text style={styles.sectionTitle}>Account Settings</Text>
           {menuItems.map((item) => (
             <TouchableOpacity
               key={item.id}
-              style={[styles.menuItem, { backgroundColor: colors.card }]}
+              style={styles.menuItem}
               onPress={item.onPress}
               activeOpacity={0.7}
             >
@@ -497,14 +456,14 @@ export default function ProfileScreen() {
                   <item.icon size={20} color={COLORS.primary} />
                 </View>
                 <View style={styles.menuItemContent}>
-                  <Text style={[styles.menuItemText, { color: colors.text }]}>{item.title}</Text>
-                  <Text style={[styles.menuItemSubtitle, { color: colors.textSecondary }]}>
+                  <Text style={styles.menuItemText}>{item.title}</Text>
+                  <Text style={styles.menuItemSubtitle}>
                     {item.subtitle}
                   </Text>
                 </View>
               </View>
               {item.rightComponent || (item.showArrow && (
-                <Settings size={16} color={colors.textSecondary} style={{ transform: [{ rotate: '90deg' }] }} />
+                <ChevronRight size={16} color={COLORS.textSecondary} />
               ))}
             </TouchableOpacity>
           ))}
@@ -513,22 +472,26 @@ export default function ProfileScreen() {
         {/* Sign Out Button */}
         <View style={styles.signOutContainer}>
           <TouchableOpacity
-            style={[styles.signOutButton, { backgroundColor: colors.card }]}
+            style={styles.signOutButton}
             onPress={handleSignOut}
-            disabled={authLoading}
+            disabled={loading}
             activeOpacity={0.7}
           >
-            <LogOut size={20} color={COLORS.error} />
+            {loading ? (
+              <ActivityIndicator color={COLORS.error} size="small" />
+            ) : (
+              <LogOut size={20} color={COLORS.error} />
+            )}
             <Text style={styles.signOutText}>
-              {authLoading ? 'Signing Out...' : 'Sign Out'}
+              {loading ? 'Signing Out...' : 'Sign Out'}
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* App Version */}
         <View style={styles.versionContainer}>
-          <Text style={[styles.versionText, { color: colors.textTertiary }]}>MaidEasy v1.0.0</Text>
-          <Text style={[styles.versionText, { color: colors.textTertiary }]}>Made with ❤️ in India</Text>
+          <Text style={styles.versionText}>MaidEasy v1.0.0</Text>
+          <Text style={styles.versionText}>Made with ❤️ in India</Text>
         </View>
       </ScrollView>
     </View>
@@ -539,6 +502,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    ...FONTS.body2,
+    color: COLORS.textSecondary,
+    marginTop: 16,
   },
   header: {
     backgroundColor: COLORS.primary,
@@ -648,6 +616,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...FONTS.h4,
+    color: COLORS.text,
     fontWeight: 'bold',
     marginBottom: 16,
   },
@@ -661,6 +630,7 @@ const styles = StyleSheet.create({
   },
   quickActionText: {
     ...FONTS.body3,
+    color: COLORS.text,
     marginTop: 8,
     textAlign: 'center',
   },

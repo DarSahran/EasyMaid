@@ -5,117 +5,38 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   ActivityIndicator,
   Alert,
+  Dimensions,
+  SafeAreaView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Phone, Mail, CheckCircle, ArrowRight, Sparkles, Home, AtSign } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
-import { Phone, AtSign, Mail, Eye, EyeOff, CheckCircle } from 'lucide-react-native';
-import { soundManager } from '@/lib/soundManager';
+import { COLORS } from '@/lib/constants';
 
-const COLORS = {
-  white: '#fff',
-  black: '#222',
-  primary: '#fa442a',
-  darkGray: '#666',
-  lightGray: '#e5e5e5',
-  error: '#FF5A5F',
-  success: '#34C759',
-  background: '#f8f9fa',
-};
+const { width, height } = Dimensions.get('window');
 
 const FONTS = {
-  h1: { fontSize: 28, fontWeight: 'bold' },
-  h4: { fontSize: 18, fontWeight: '600' },
-  body2: { fontSize: 16 },
-  body3: { fontSize: 15 },
-  body4: { fontSize: 13 },
+  extraLarge: { fontSize: 32, fontWeight: '800' },
+  large: { fontSize: 24, fontWeight: '700' },
+  medium: { fontSize: 18, fontWeight: '600' },
+  regular: { fontSize: 16, fontWeight: '400' },
+  small: { fontSize: 14, fontWeight: '400' },
 };
 
-const SIZES = {
-  padding: 16,
-  radius: 18,
-};
-
-const translations = {
-  en: {
-    'Welcome Back': 'Welcome Back',
-    'Sign in to your account': 'Sign in to your account',
-    'Phone': 'Phone',
-    'Email': 'Email',
-    'Mobile Number': 'Mobile Number',
-    'Email Address': 'Email Address',
-    'Enter your mobile number': 'Enter your mobile number',
-    'Enter your email address': 'Enter your email address',
-    'Please enter a valid Indian mobile number.': 'Please enter a valid Indian mobile number.',
-    'Please enter a valid email address.': 'Please enter a valid email address.',
-    'Continue': 'Continue',
-    'Continue with Google': 'Continue with Google',
-    'OR': 'OR',
-    'By continuing, you agree to our': 'By continuing, you agree to our',
-    'Terms of Service': 'Terms of Service',
-    'and': 'and',
-    'Privacy Policy': 'Privacy Policy',
-    'Verification Code Sent': 'Verification Code Sent',
-    'A verification code has been sent to your': 'A verification code has been sent to your',
-  },
-  hi: {
-    'Welcome Back': 'वापसी पर स्वागत है',
-    'Sign in to your account': 'अपने खाते में साइन इन करें',
-    'Phone': 'फ़ोन',
-    'Email': 'ईमेल',
-    'Mobile Number': 'मोबाइल नंबर',
-    'Email Address': 'ईमेल पता',
-    'Enter your mobile number': 'अपना मोबाइल नंबर दर्ज करें',
-    'Enter your email address': 'अपना ईमेल पता दर्ज करें',
-    'Please enter a valid Indian mobile number.': 'कृपया मान्य भारतीय मोबाइल नंबर दर्ज करें।',
-    'Please enter a valid email address.': 'कृपया मान्य ईमेल पता दर्ज करें।',
-    'Continue': 'जारी रखें',
-    'Continue with Google': 'Google से जारी रखें',
-    'OR': 'या',
-    'By continuing, you agree to our': 'जारी रखते हुए, आप हमारी',
-    'Terms of Service': 'सेवा की शर्तें',
-    'and': 'और',
-    'Privacy Policy': 'गोपनीयता नीति',
-    'Verification Code Sent': 'सत्यापन कोड भेजा गया',
-    'A verification code has been sent to your': 'आपके पास एक सत्यापन कोड भेजा गया है',
-  },
-};
-
-const TranslationContext = React.createContext({
-  t: (key: string) => key,
-  language: 'en',
-  setLanguage: (lang: string) => {},
-});
-
-function TranslationProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguage] = useState<'en' | 'hi'>('en');
-  const t = (key: string) => translations[language][key] || key;
-
-  return (
-    <TranslationContext.Provider value={{ t, language, setLanguage }}>
-      {children}
-    </TranslationContext.Provider>
-  );
-}
-
-const useTranslation = () => React.useContext(TranslationContext);
-
-const loginImage = require('@/assets/images/login_image.jpeg');
-
-function LoginScreen() {
+export default function LoginScreen() {
   const [authMode, setAuthMode] = useState<'phone' | 'email'>('phone');
   const [inputValue, setInputValue] = useState('');
   const [isValid, setIsValid] = useState(false);
   const [touched, setTouched] = useState(false);
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { sendOTP } = useAuth();
   const router = useRouter();
-  const { t, language, setLanguage } = useTranslation();
 
   const validateInput = (text: string) => {
     if (authMode === 'phone') {
@@ -132,19 +53,14 @@ function LoginScreen() {
   };
 
   const handleContinue = async () => {
-    setError('');
     if (!validateInput(inputValue)) return;
 
     try {
       setIsLoading(true);
-      await soundManager.playSwoosh();
+      
+      console.log('📱 Sending OTP to:', inputValue, 'Type:', authMode);
+      await sendOTP(inputValue, authMode);
 
-      console.log('Sending OTP to:', inputValue, 'Type:', authMode);
-
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      console.log('Navigating to OTP screen...');
       router.push({
         pathname: '/(auth)/otp',
         params: {
@@ -153,318 +69,319 @@ function LoginScreen() {
         },
       });
 
-      // Show success message
       Alert.alert(
-        t('Verification Code Sent'),
-        `${t('A verification code has been sent to your')} ${authMode}.\n\n🔐 Use OTP: 000000`
+        'Verification Code Sent',
+        `A verification code has been sent to your ${authMode}.\n\n🔐 Use OTP: 000000`
       );
-    } catch (error) {
-      console.error('Send OTP error:', error);
-      await soundManager.playError();
-      setError('Failed to send verification code. Please try again.');
+    } catch (error: any) {
+      console.error('❌ Send OTP error:', error);
+      Alert.alert('Error', error.message || 'Failed to send verification code. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleGoogleSignIn = async () => {
-    try {
-      await soundManager.playSwoosh();
-      Alert.alert('Coming Soon', 'Google authentication will be available soon!');
-    } catch (error) {
-      console.error('Google sign-in error:', error);
-      Alert.alert('Error', 'Google sign-in failed. Please try again.');
-    }
-  };
-
-  const handleLanguageToggle = async () => {
-    await soundManager.playSwoosh();
-    setLanguage(language === 'en' ? 'hi' : 'en');
   };
 
   const resetForm = () => {
     setInputValue('');
     setIsValid(false);
     setTouched(false);
-    setError('');
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={['#fa442a', '#ff6b47', '#fa442a']}
+        style={styles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
-        <View style={styles.header}>
-          <Image source={loginImage} style={styles.logo} resizeMode="cover" />
-          <View style={styles.overlay} />
-          <View style={styles.headerContent}>
-            <Text style={styles.welcomeText}>{t('Welcome Back')}</Text>
-            <Text style={styles.subtitleText}>{t('Sign in to your account')}</Text>
-          </View>
-        </View>
-
-        <View style={styles.contentContainer}>
-          <View style={styles.authModeToggle}>
-            <TouchableOpacity
-              style={[
-                styles.authModeBtn,
-                authMode === 'phone' ? styles.authModeBtnActive : null,
-              ]}
-              onPress={() => {
-                setAuthMode('phone');
-                resetForm();
-              }}
-              activeOpacity={0.8}
-            >
-              <Phone size={18} color={authMode === 'phone' ? COLORS.white : COLORS.darkGray} />
-              <Text
-                style={[
-                  styles.authModeBtnText,
-                  authMode === 'phone' ? styles.authModeBtnTextActive : null,
-                ]}
-              >
-                {t('Phone')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.authModeBtn,
-                authMode === 'email' ? styles.authModeBtnActive : null,
-              ]}
-              onPress={() => {
-                setAuthMode('email');
-                resetForm();
-              }}
-              activeOpacity={0.8}
-            >
-              <AtSign size={18} color={authMode === 'email' ? COLORS.white : COLORS.darkGray} />
-              <Text
-                style={[
-                  styles.authModeBtnText,
-                  authMode === 'email' ? styles.authModeBtnTextActive : null,
-                ]}
-              >
-                {t('Email')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.inputSection}>
-            <Text style={styles.inputLabel}>
-              {authMode === 'phone' ? t('Mobile Number') : t('Email Address')}
-            </Text>
-            <View
-              style={[
-                styles.inputContainer,
-                touched && inputValue.length > 0 && !isValid
-                  ? styles.inputError
-                  : null,
-                isValid ? styles.inputSuccess : null,
-              ]}
-            >
-              {authMode === 'phone' && (
-                <View style={styles.countryCode}>
-                  <Text style={styles.countryCodeText}>+91</Text>
+        <KeyboardAvoidingView
+          style={styles.keyboardView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContainer}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Header Section */}
+            <View style={styles.header}>
+              <View style={styles.logoContainer}>
+                <View style={styles.logoCircle}>
+                  <Home size={40} color={COLORS.white} />
+                  <Sparkles size={20} color="#FFD700" style={styles.sparkle} />
                 </View>
-              )}
-
-              <TextInput
-                style={styles.input}
-                value={inputValue}
-                onChangeText={(text) => {
-                  setInputValue(text);
-                  validateInput(text);
-                  setError('');
-                }}
-                onBlur={() => setTouched(true)}
-                placeholder={
-                  authMode === 'phone'
-                    ? t('Enter your mobile number')
-                    : t('Enter your email address')
-                }
-                placeholderTextColor={COLORS.darkGray}
-                keyboardType={authMode === 'phone' ? 'phone-pad' : 'email-address'}
-                maxLength={authMode === 'phone' ? 10 : 50}
-                returnKeyType="done"
-                onSubmitEditing={handleContinue}
-                autoFocus
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!isLoading}
-              />
-
-              <View style={styles.inputIconContainer}>
-                {isValid && (
-                  <CheckCircle size={20} color={COLORS.success} />
-                )}
-                {!isValid && (
-                  <>
-                    {authMode === 'phone' && (
-                      <Phone size={18} color={COLORS.darkGray} />
-                    )}
-                    {authMode === 'email' && (
-                      <Mail size={18} color={COLORS.darkGray} />
-                    )}
-                  </>
-                )}
               </View>
+              
+              <Text style={styles.welcomeTitle}>Welcome to</Text>
+              <Text style={styles.brandName}>MaidEasy</Text>
+              <Text style={styles.tagline}>
+                Your trusted household help platform
+              </Text>
             </View>
 
-            {touched && inputValue.length > 0 && !isValid && (
-              <Text style={styles.errorText}>
-                {authMode === 'phone'
-                  ? t('Please enter a valid Indian mobile number.')
-                  : t('Please enter a valid email address.')}
-              </Text>
-            )}
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          </View>
+            {/* Content Card */}
+            <View style={styles.contentCard}>
+              <Text style={styles.cardTitle}>Sign in to your account</Text>
+              
+              {/* Auth Mode Toggle */}
+              <View style={styles.authModeContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.authModeButton,
+                    authMode === 'phone' && styles.authModeButtonActive,
+                  ]}
+                  onPress={() => {
+                    setAuthMode('phone');
+                    resetForm();
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Phone size={20} color={authMode === 'phone' ? COLORS.white : COLORS.primary} />
+                  <Text
+                    style={[
+                      styles.authModeText,
+                      authMode === 'phone' && styles.authModeTextActive,
+                    ]}
+                  >
+                    Phone
+                  </Text>
+                </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.button, (!isValid || isLoading) && styles.buttonDisabled]}
-            onPress={handleContinue}
-            disabled={!isValid || isLoading}
-            activeOpacity={0.8}
-          >
-            {isLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator color={COLORS.white} size="small" />
-                <Text style={styles.loadingText}>Sending...</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.authModeButton,
+                    authMode === 'email' && styles.authModeButtonActive,
+                  ]}
+                  onPress={() => {
+                    setAuthMode('email');
+                    resetForm();
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <AtSign size={20} color={authMode === 'email' ? COLORS.white : COLORS.primary} />
+                  <Text
+                    style={[
+                      styles.authModeText,
+                      authMode === 'email' && styles.authModeTextActive,
+                    ]}
+                  >
+                    Email
+                  </Text>
+                </TouchableOpacity>
               </View>
-            ) : (
-              <Text style={styles.buttonText}>{t('Continue')}</Text>
-            )}
-          </TouchableOpacity>
 
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>{t('OR')}</Text>
-            <View style={styles.dividerLine} />
-          </View>
+              {/* Input Section */}
+              <View style={styles.inputSection}>
+                <Text style={styles.inputLabel}>
+                  {authMode === 'phone' ? 'Mobile Number' : 'Email Address'}
+                </Text>
+                
+                <View
+                  style={[
+                    styles.inputContainer,
+                    touched && inputValue.length > 0 && !isValid && styles.inputError,
+                    isValid && styles.inputSuccess,
+                  ]}
+                >
+                  {authMode === 'phone' && (
+                    <View style={styles.countryCode}>
+                      <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
+                    </View>
+                  )}
 
-          <TouchableOpacity
-            style={styles.googleButton}
-            onPress={handleGoogleSignIn}
-            disabled={isLoading}
-            activeOpacity={0.8}
-          >
-            <Mail size={20} color={COLORS.primary} />
-            <Text style={styles.googleButtonText}>{t('Continue with Google')}</Text>
-          </TouchableOpacity>
+                  <TextInput
+                    style={styles.input}
+                    value={inputValue}
+                    onChangeText={(text) => {
+                      setInputValue(text);
+                      validateInput(text);
+                    }}
+                    onBlur={() => setTouched(true)}
+                    placeholder={
+                      authMode === 'phone'
+                        ? 'Enter your mobile number'
+                        : 'Enter your email address'
+                    }
+                    placeholderTextColor="#999"
+                    keyboardType={authMode === 'phone' ? 'phone-pad' : 'email-address'}
+                    maxLength={authMode === 'phone' ? 10 : 50}
+                    returnKeyType="done"
+                    onSubmitEditing={handleContinue}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!isLoading}
+                  />
 
-          <Text style={styles.termsText}>
-            {t('By continuing, you agree to our')}{' '}
-            <Text style={styles.termsLink}>{t('Terms of Service')}</Text>{' '}
-            {t('and')}{' '}
-            <Text style={styles.termsLink}>{t('Privacy Policy')}</Text>
-          </Text>
+                  <View style={styles.inputIcon}>
+                    {isValid ? (
+                      <CheckCircle size={20} color={COLORS.success} />
+                    ) : (
+                      <Mail size={20} color="#ccc" />
+                    )}
+                  </View>
+                </View>
 
-          <View style={styles.languageToggleBottom}>
-            <TouchableOpacity style={styles.langBtn} onPress={handleLanguageToggle}>
-              <Text style={[styles.langText, language === 'en' && styles.langActive]}>
-                EN
+                {touched && inputValue.length > 0 && !isValid && (
+                  <Text style={styles.errorText}>
+                    {authMode === 'phone'
+                      ? 'Please enter a valid Indian mobile number'
+                      : 'Please enter a valid email address'}
+                  </Text>
+                )}
+              </View>
+
+              {/* Continue Button */}
+              <TouchableOpacity
+                style={[
+                  styles.continueButton,
+                  (!isValid || isLoading) && styles.continueButtonDisabled,
+                ]}
+                onPress={handleContinue}
+                disabled={!isValid || isLoading}
+                activeOpacity={0.8}
+              >
+                {isLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator color={COLORS.white} size="small" />
+                    <Text style={styles.loadingText}>Sending OTP...</Text>
+                  </View>
+                ) : (
+                  <View style={styles.buttonContent}>
+                    <Text style={styles.continueButtonText}>Continue</Text>
+                    <ArrowRight size={20} color={COLORS.white} />
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* Helper Text */}
+              <View style={styles.helperContainer}>
+                <Text style={styles.helperText}>
+                  We'll send you a verification code to confirm your {authMode}
+                </Text>
+              </View>
+
+              {/* OTP Helper */}
+              <View style={styles.otpHelper}>
+                <Text style={styles.otpHelperText}>
+                  🔐 For testing, use OTP: 000000
+                </Text>
+              </View>
+
+              {/* Terms */}
+              <Text style={styles.termsText}>
+                By continuing, you agree to our{' '}
+                <Text style={styles.termsLink}>Terms of Service</Text>
+                {' '}and{' '}
+                <Text style={styles.termsLink}>Privacy Policy</Text>
               </Text>
-              <Text style={styles.langDivider}>|</Text>
-              <Text style={[styles.langText, language === 'hi' && styles.langActive]}>
-                हि
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* OTP Helper */}
-          <View style={styles.otpHelper}>
-            <Text style={styles.otpHelperText}>
-              🔐 Use OTP: 000000 for verification
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </LinearGradient>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+  },
+  gradient: {
+    flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
   },
   scrollContainer: {
     flexGrow: 1,
+    minHeight: height,
   },
   header: {
-    height: 280,
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 40,
+  },
+  logoContainer: {
+    marginBottom: 30,
     position: 'relative',
-    overflow: 'hidden',
   },
-  logo: {
-    width: '100%',
-    height: '100%',
+  logoCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-  },
-  headerContent: {
+  sparkle: {
     position: 'absolute',
-    bottom: 30,
-    left: 20,
-    right: 20,
+    top: 10,
+    right: 10,
   },
-  welcomeText: {
-    ...FONTS.h1,
-    color: COLORS.white,
-    marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
-  },
-  subtitleText: {
-    ...FONTS.body2,
+  welcomeTitle: {
+    ...FONTS.large,
     color: COLORS.white,
     opacity: 0.9,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
+    marginBottom: 8,
   },
-  contentContainer: {
-    flex: 1,
-    paddingHorizontal: SIZES.padding * 1.5,
-    paddingTop: SIZES.padding * 2,
-    paddingBottom: SIZES.padding,
+  brandName: {
+    ...FONTS.extraLarge,
+    color: COLORS.white,
+    marginBottom: 16,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  tagline: {
+    ...FONTS.regular,
+    color: COLORS.white,
+    opacity: 0.8,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  contentCard: {
     backgroundColor: COLORS.white,
-    borderTopLeftRadius: SIZES.radius * 1.5,
-    borderTopRightRadius: SIZES.radius * 1.5,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 40,
     marginTop: -20,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: -2 },
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  authModeToggle: {
+  cardTitle: {
+    ...FONTS.large,
+    color: COLORS.black,
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  authModeContainer: {
     flexDirection: 'row',
-    alignSelf: 'center',
-    marginBottom: SIZES.padding * 1.5,
-    backgroundColor: COLORS.lightGray,
-    borderRadius: SIZES.radius,
-    overflow: 'hidden',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 16,
     padding: 4,
+    marginBottom: 24,
   },
-  authModeBtn: {
+  authModeButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: SIZES.radius - 4,
-    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
   },
-  authModeBtnActive: {
+  authModeButtonActive: {
     backgroundColor: COLORS.primary,
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 2 },
@@ -472,213 +389,139 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  authModeBtnText: {
-    ...FONTS.body3,
-    color: COLORS.darkGray,
-    marginLeft: 8,
-    fontWeight: '600',
+  authModeText: {
+    ...FONTS.medium,
+    color: COLORS.primary,
   },
-  authModeBtnTextActive: {
+  authModeTextActive: {
     color: COLORS.white,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   inputSection: {
-    marginBottom: SIZES.padding * 1.5,
+    marginBottom: 24,
   },
   inputLabel: {
-    ...FONTS.body3,
+    ...FONTS.medium,
     color: COLORS.black,
-    marginBottom: 8,
+    marginBottom: 12,
     marginLeft: 4,
-    fontWeight: '600',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#f8f9fa',
     borderWidth: 2,
-    borderColor: COLORS.lightGray,
-    borderRadius: SIZES.radius,
-    backgroundColor: COLORS.white,
-    overflow: 'hidden',
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  input: {
-    flex: 1,
-    height: 56,
-    paddingHorizontal: SIZES.padding,
-    ...FONTS.body2,
-    color: COLORS.black,
-    backgroundColor: 'transparent',
-  },
-  countryCode: {
-    backgroundColor: COLORS.lightGray,
+    borderColor: '#e9ecef',
+    borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderTopLeftRadius: SIZES.radius - 2,
-    borderBottomLeftRadius: SIZES.radius - 2,
-    borderRightWidth: 1,
-    borderRightColor: COLORS.lightGray,
-  },
-  countryCodeText: {
-    ...FONTS.body2,
-    color: COLORS.black,
-    fontWeight: 'bold',
-  },
-  inputIconContainer: {
-    paddingRight: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
+    height: 60,
   },
   inputError: {
     borderColor: COLORS.error,
-    backgroundColor: COLORS.error + '05',
+    backgroundColor: '#fef2f2',
   },
   inputSuccess: {
     borderColor: COLORS.success,
-    backgroundColor: COLORS.success + '05',
+    backgroundColor: '#f0fdf4',
+  },
+  countryCode: {
+    backgroundColor: COLORS.white,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  countryCodeText: {
+    ...FONTS.regular,
+    color: COLORS.black,
+    fontWeight: '600',
+  },
+  input: {
+    flex: 1,
+    ...FONTS.regular,
+    color: COLORS.black,
+    height: '100%',
+  },
+  inputIcon: {
+    marginLeft: 12,
   },
   errorText: {
+    ...FONTS.small,
     color: COLORS.error,
-    ...FONTS.body4,
     marginTop: 8,
     marginLeft: 4,
   },
-  button: {
+  continueButton: {
     backgroundColor: COLORS.primary,
-    borderRadius: SIZES.radius,
-    paddingVertical: SIZES.padding + 2,
+    borderRadius: 16,
+    paddingVertical: 18,
     alignItems: 'center',
-    marginBottom: SIZES.padding * 1.5,
+    marginBottom: 20,
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
-  buttonDisabled: {
-    backgroundColor: COLORS.lightGray,
+  continueButtonDisabled: {
+    backgroundColor: '#ccc',
     shadowOpacity: 0,
     elevation: 0,
   },
-  buttonText: {
-    ...FONTS.h4,
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  continueButtonText: {
+    ...FONTS.medium,
     color: COLORS.white,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   loadingText: {
-    ...FONTS.h4,
+    ...FONTS.medium,
     color: COLORS.white,
-    marginLeft: 8,
     fontWeight: '600',
   },
-  divider: {
-    flexDirection: 'row',
+  helperContainer: {
     alignItems: 'center',
-    marginVertical: SIZES.padding,
+    marginBottom: 16,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.lightGray,
-  },
-  dividerText: {
-    ...FONTS.body3,
-    color: COLORS.darkGray,
-    marginHorizontal: SIZES.padding,
-    fontWeight: '600',
-  },
-  googleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.white,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    borderRadius: SIZES.radius,
-    paddingVertical: SIZES.padding + 2,
-    marginBottom: SIZES.padding,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  googleButtonText: {
-    ...FONTS.body2,
-    color: COLORS.primary,
-    fontWeight: '600',
-    marginLeft: 12,
-  },
-  termsText: {
-    ...FONTS.body4,
-    color: COLORS.darkGray,
+  helperText: {
+    ...FONTS.small,
+    color: '#666',
     textAlign: 'center',
-    marginTop: SIZES.padding,
-    marginBottom: SIZES.padding,
     lineHeight: 20,
   },
-  termsLink: {
-    color: COLORS.primary,
-    fontWeight: 'bold',
-  },
-  languageToggleBottom: {
-    alignItems: 'center',
-    marginTop: SIZES.padding,
-    marginBottom: SIZES.padding,
-  },
-  langBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    backgroundColor: COLORS.lightGray,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  langText: {
-    ...FONTS.body3,
-    color: COLORS.darkGray,
-    fontWeight: 'bold',
-  },
-  langActive: {
-    color: COLORS.primary,
-  },
-  langDivider: {
-    color: COLORS.darkGray,
-    marginHorizontal: 8,
-    fontWeight: 'bold',
-  },
   otpHelper: {
-    padding: 12,
-    backgroundColor: COLORS.success + '20',
-    borderRadius: SIZES.radius,
+    backgroundColor: '#f0fdf4',
     borderWidth: 1,
     borderColor: COLORS.success,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 20,
   },
   otpHelperText: {
-    ...FONTS.body4,
+    ...FONTS.small,
     color: COLORS.success,
     textAlign: 'center',
     fontWeight: '600',
   },
+  termsText: {
+    ...FONTS.small,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  termsLink: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
 });
-
-export default function WrappedLoginScreen() {
-  return (
-    <TranslationProvider>
-      <LoginScreen />
-    </TranslationProvider>
-  );
-}
